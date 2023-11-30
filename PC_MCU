@@ -1,0 +1,54 @@
+#include <EEPROM.h>
+#include <util/crc16.h>
+
+#define BAUD_RATE 2400
+
+void setup() {
+  Serial.begin(BAUD_RATE);
+  Serial.println("MCU Initialized");
+}
+
+uint16_t calculateCRC16(uint8_t *data, size_t length) {
+  uint16_t crc = 0xFFFF;
+  for (size_t i = 0; i < length; ++i) {
+    crc = _crc16_update(crc, data[i]);
+  }
+  return crc;
+}
+
+void receiveData() {
+  const size_t buffer_size = 32; 
+  uint8_t buffer[buffer_size];
+  size_t index = 0;
+
+  while (true) {
+    if (Serial.available() > 0) {
+      buffer[index] = Serial.read();
+      ++index;
+
+
+      if (index >= buffer_size || buffer[index - 1] == '\0') {
+        uint16_t receivedCRC = *(uint16_t *)(buffer + index - 3);
+        buffer[index - 3] = '\0';
+
+ 
+        uint16_t calculatedCRC = calculateCRC16(buffer, index - 3);
+        if (receivedCRC == calculatedCRC) {
+          // Store data in EEPROM
+          for (size_t i = 0; i < index - 3; ++i) {
+            EEPROM.write(i, buffer[i]);
+          }
+          Serial.println("Data received and stored successfully");
+        } else {
+          Serial.println("CRC Error! Data corrupted.");
+        }
+
+        index = 0;
+      }
+    }
+  }
+}
+
+void loop() {
+  receiveData();
+}
