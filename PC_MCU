@@ -3,16 +3,16 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <time.h>
-#include <Windows.h> // For Sleep function
+#include <Windows.h> 
 
 #define BAUD_RATE 2400
 #define DATA_SIZE 1000
 
 void UART_Transmit(uint8_t data) {
-    // Simulate UART transmission delay
+   
     Sleep((1000 * 10) / BAUD_RATE);
 
-    // Transmit data (you may replace this with actual UART transmission code)
+ 
     printf("%c", data);
 }
 
