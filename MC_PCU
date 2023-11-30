@@ -1,0 +1,86 @@
+#include <avr/io.h>
+#include <avr/eeprom.h>
+#include <util/crc16.h>
+#include <util/delay.h>
+#include <stdint.h>
+#include <string.h>
+
+#define F_CPU 16000000UL
+#define BAUD_RATE 2400
+#define UBRR_VALUE ((F_CPU / (BAUD_RATE * 16UL)) - 1)
+#define DATA_SIZE 1000
+
+void UART_Init() {
+    UBRR0H = (UBRR_VALUE >> 8);
+    UBRR0L = UBRR_VALUE;
+    UCSR0B |= (1 << TXEN0) | (1 << RXEN0);
+    UCSR0C |= (1 << UCSZ01) | (1 << UCSZ00); 
+}
+
+uint8_t UART_Receive() {
+    while (!(UCSR0A & (1 << RXC0))); 
+    return UDR0;
+}
+
+void UART_Transmit(uint8_t data) {
+  
+    _delay_ms((1000 * 10) / BAUD_RATE);
+
+   
+    printf("%c", data);
+}
+
+uint16_t calculateCRC16(uint8_t *data, size_t length) {
+    uint16_t crc = 0xFFFF;
+    for (size_t i = 0; i < length; ++i) {
+        crc = _crc16_update(crc, data[i]);
+    }
+    return crc;
+}
+
+void receive_and_store_data() {
+    uint8_t received_data[DATA_SIZE];
+    uint16_t crc_received;
+
+    for (int i = 0; i < DATA_SIZE; ++i) {
+        received_data[i] = UART_Receive();
+    }
+
+    crc_received = (UART_Receive() << 8) | UART_Receive();
+
+    
+    uint16_t crc_calculated = calculateCRC16(received_data, DATA_SIZE);
+    if (crc_calculated == crc_received) {
+     
+        for (int i = 0; i < DATA_SIZE; ++i) {
+            eeprom_write_byte((uint8_t*)i, received_data[i]);
+        }
+
+        printf("\n\nData received and stored successfully.\n");
+    } else {
+        printf("\n\nData corruption detected. Please resend.\n");
+    }
+}
+
+void send_stored_data() {
+    for (int i = 0; i < DATA_SIZE; ++i) {
+        uint8_t data = eeprom_read_byte((uint8_t*)i);
+        UART_Transmit(data);
+    }
+
+    printf("\n\nData sent successfully.\n");
+}
+
+int main() {
+    UART_Init();
+
+    while (1) {
+        receive_and_store_data();
+        send_stored_data();
+
+        
+        _delay_ms(1000); 
+    }
+
+    return 0;
+}
