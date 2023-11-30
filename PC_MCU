@@ -1,54 +1,41 @@
-#include <EEPROM.h>
-#include <util/crc16.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <time.h>
+#include <Windows.h> // For Sleep function
 
 #define BAUD_RATE 2400
+#define DATA_SIZE 1000
 
-void setup() {
-  Serial.begin(BAUD_RATE);
-  Serial.println("MCU Initialized");
+void UART_Transmit(uint8_t data) {
+    // Simulate UART transmission delay
+    Sleep((1000 * 10) / BAUD_RATE);
+
+    // Transmit data (you may replace this with actual UART transmission code)
+    printf("%c", data);
 }
 
-uint16_t calculateCRC16(uint8_t *data, size_t length) {
-  uint16_t crc = 0xFFFF;
-  for (size_t i = 0; i < length; ++i) {
-    crc = _crc16_update(crc, data[i]);
-  }
-  return crc;
-}
+void send_data_to_mcu(const char* data) {
+    clock_t start_time = clock();
 
-void receiveData() {
-  const size_t buffer_size = 32; 
-  uint8_t buffer[buffer_size];
-  size_t index = 0;
-
-  while (true) {
-    if (Serial.available() > 0) {
-      buffer[index] = Serial.read();
-      ++index;
-
-
-      if (index >= buffer_size || buffer[index - 1] == '\0') {
-        uint16_t receivedCRC = *(uint16_t *)(buffer + index - 3);
-        buffer[index - 3] = '\0';
-
- 
-        uint16_t calculatedCRC = calculateCRC16(buffer, index - 3);
-        if (receivedCRC == calculatedCRC) {
-          // Store data in EEPROM
-          for (size_t i = 0; i < index - 3; ++i) {
-            EEPROM.write(i, buffer[i]);
-          }
-          Serial.println("Data received and stored successfully");
-        } else {
-          Serial.println("CRC Error! Data corrupted.");
-        }
-
-        index = 0;
-      }
+    for (int i = 0; i < DATA_SIZE; ++i) {
+        UART_Transmit(data[i]);
     }
-  }
+
+    clock_t end_time = clock();
+    double time_taken = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+    double speed = (DATA_SIZE * 8) / time_taken;
+
+    printf("\n\nTransmission completed.\n");
+    printf("Transmission Speed: %.2f bits/second\n", speed);
 }
 
-void loop() {
-  receiveData();
+int main() {
+    const char* text_data = "Finance Minister Arun Jaitley Tuesday hit out at former RBI governor Raghuram Rajan for predicting that the next banking crisis would be triggered by MSME lending, saying postmortem is easier than taking action when it was required. Rajan, who had as the chief economist at IMF warned of impending financial crisis of 2008, in a note to a parliamentary committee warned against ambitious credit targets and loan waivers, saying that they could be the sources of the next banking crisis. Government should focus on sources of the next crisis, not just the last one."
+                             " In particular, government should refrain from setting ambitious credit targets or waiving loans. Credit targets are sometimes achieved by abandoning appropriate due diligence, creating the environment for future NPAs,\" Rajan said in the note.\" Both MUDRA loans as well as the Kisan Credit Card, while popular, have to be examined more closely for potential credit risk. Rajan, who was RBI governor for three years till September 2016, is currently.";
+
+    send_data_to_mcu(text_data);
+
+    return 0;
 }
